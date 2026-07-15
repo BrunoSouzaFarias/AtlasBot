@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   model: process.env.LLM_MODEL || 'deepseek-ai/deepseek-v4-flash',
   temperature: 0.3,
   welcomeMessage: 'Olá! Como posso ajudar você hoje no suporte da Liberty TI?',
-  primaryColor: '#06b6d4',
+  primaryColor: '#f59e0b',
   systemPromptExtra: '',
 };
 

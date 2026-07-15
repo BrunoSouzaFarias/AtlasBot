@@ -34,10 +34,10 @@ function WidgetContent() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100 font-sans">
       {/* Header */}
       <div
-        className="flex items-center gap-3 p-4 border-b border-slate-800/80 shrink-0 select-none"
+        className="flex items-center gap-3 p-4 border-b border-zinc-800/80 shrink-0 select-none"
         style={{ borderTop: `4px solid ${primaryColor}` }}
       >
         <div
@@ -49,7 +49,7 @@ function WidgetContent() {
         </div>
         <div className="min-w-0">
           <h1 className="font-semibold text-sm text-white leading-tight">Suporte Liberty TI</h1>
-          <span className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+          <span className="text-xs text-zinc-400 flex items-center gap-1.5 mt-0.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true"></span>
             Assistente Virtual Inteligente
           </span>
@@ -83,8 +83,8 @@ export default function WidgetPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-slate-500">
-          <Loader2 className="w-8 h-8 animate-spin text-cyan-500 mb-2" aria-hidden="true" />
+        <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 text-zinc-500">
+          <Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-2" aria-hidden="true" />
           <p className="text-sm font-medium">Carregando widget...</p>
         </div>
       }

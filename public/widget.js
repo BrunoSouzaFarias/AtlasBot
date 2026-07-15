@@ -63,14 +63,14 @@
       position: fixed;
       bottom: 100px;
       right: 24px;
-      width: 380px;
-      height: 600px;
+      width: 440px;
+      height: 680px;
       max-height: calc(100vh - 120px);
       max-width: calc(100vw - 48px);
       border-radius: 16px;
-      background: #020617;
+      background: #09090b;
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.05);
       overflow: hidden;
       z-index: 999999;
       opacity: 0;
