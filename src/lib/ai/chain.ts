@@ -10,6 +10,11 @@ const nvidia = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// deepseek-v4-flash responde rápido; o v4-pro fica em fila indefinida na
+// NVIDIA (jul/2026) e travava o chat. Configurável via env até a página de
+// settings persistir isso no banco.
+const LLM_MODEL = process.env.LLM_MODEL || 'deepseek-ai/deepseek-v4-flash';
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -98,23 +103,19 @@ export async function chat(
   // 2. Build context from sources
   const context = sources.length > 0
     ? sources
-        .map((s, i) => `[Fonte: ${s.documentName}]\n${s.content}`)
+        .map(s => `[Fonte: ${s.documentName}]\n${s.content}`)
         .join('\n\n---\n\n')
     : 'Nenhuma informação relevante encontrada na base de conhecimento.';
 
-  // 3. Build chat history string
-  const historyStr = chatHistory
-    .map(m => `${m.role === 'user' ? 'Cliente' : 'LibertyBot'}: ${m.content}`)
-    .join('\n');
-
-  // 4. Build the full prompt
-  const fullPrompt = buildRagPrompt(context, question, historyStr);
-
-  // 5. Stream the response
+  // 3. Stream the response — histórico como turnos reais (não string
+  // concatenada): melhora a qualidade e reduz injection via histórico
   const stream = streamText({
-    model: nvidia.chat('deepseek-ai/deepseek-v4-pro'),
+    model: nvidia.chat(LLM_MODEL),
     system: SYSTEM_PROMPT,
-    prompt: fullPrompt,
+    messages: [
+      ...chatHistory.map(m => ({ role: m.role, content: m.content })),
+      { role: 'user' as const, content: buildRagPrompt(context, question) },
+    ],
     temperature: 0.3,
   });
 

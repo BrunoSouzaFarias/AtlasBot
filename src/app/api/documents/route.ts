@@ -1,8 +1,13 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { ingestDocument, deleteDocument } from '@/lib/documents/ingest';
+import { requireAdmin } from '@/lib/auth/session';
+import { validateUploadFile, MAX_FILES } from '@/lib/validation';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const documents = await prisma.document.findMany({
       orderBy: { createdAt: 'desc' },
@@ -27,6 +32,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const formData = await request.formData();
     const files = formData.getAll('files') as File[];
@@ -36,6 +44,25 @@ export async function POST(request: NextRequest) {
         { error: 'Nenhum arquivo enviado' },
         { status: 400 }
       );
+    }
+
+    if (files.length > MAX_FILES) {
+      return Response.json(
+        { error: `Envie no máximo ${MAX_FILES} arquivos por vez` },
+        { status: 400 }
+      );
+    }
+
+    // Valida TODOS os arquivos antes de ingerir qualquer um
+    for (const file of files) {
+      const validationError = validateUploadFile(file);
+      if (validationError) {
+        const isSizeError = validationError.includes('excede');
+        return Response.json(
+          { error: validationError },
+          { status: isSizeError ? 413 : 400 }
+        );
+      }
     }
 
     const results = [];
@@ -55,6 +82,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

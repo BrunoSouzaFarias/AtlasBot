@@ -1,6 +1,11 @@
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { requireAdmin } from '@/lib/auth/session';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);

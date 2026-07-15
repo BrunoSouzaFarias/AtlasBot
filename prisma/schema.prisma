@@ -68,3 +68,11 @@ model UnansweredQuestion {
 
   @@map("unanswered_questions")
 }
+
+model RateLimit {
+  key         String   @id // ex.: "chat:<ip>" ou "login:<ip>"
+  windowStart DateTime
+  count       Int      @default(0)
+
+  @@map("rate_limits")
+}
