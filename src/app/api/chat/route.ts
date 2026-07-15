@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
             encoder.encode(`data: ${JSON.stringify({ type: 'done', messageId: savedMessage.id })}\n\n`)
           );
           controller.close();
-        } catch (error) {
+        } catch {
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({ type: 'error', content: 'Erro ao gerar resposta.' })}\n\n`

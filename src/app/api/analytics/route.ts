@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { format, startOfDay, subDays } from 'date-fns';
 import prisma from '@/lib/db/prisma';
 import { requireAdmin } from '@/lib/auth/session';
 
@@ -58,6 +59,28 @@ export async function GET(request: NextRequest) {
         ? Math.round((positiveFeedback / (positiveFeedback + negativeFeedback)) * 100)
         : 0;
 
+    // Série de mensagens/dia (últimos 14 dias) — agregada em JS para ser
+    // portátil entre SQLite (dev) e Postgres (prod), sem SQL raw
+    const fourteenDaysAgo = startOfDay(subDays(now, 13));
+    const recentMessageDates = await prisma.message.findMany({
+      where: { createdAt: { gte: fourteenDaysAgo } },
+      select: { createdAt: true },
+    });
+    const countsByDay = new Map<string, number>();
+    for (let i = 13; i >= 0; i--) {
+      countsByDay.set(format(subDays(now, i), 'yyyy-MM-dd'), 0);
+    }
+    for (const { createdAt } of recentMessageDates) {
+      const key = format(createdAt, 'yyyy-MM-dd');
+      if (countsByDay.has(key)) {
+        countsByDay.set(key, (countsByDay.get(key) ?? 0) + 1);
+      }
+    }
+    const messagesPerDay = Array.from(countsByDay.entries()).map(([date, count]) => ({
+      date,
+      count,
+    }));
+
     return Response.json({
       totalConversations,
       totalMessages,
@@ -68,6 +91,7 @@ export async function GET(request: NextRequest) {
       totalDocuments,
       unansweredQuestions,
       recentConversations,
+      messagesPerDay,
     });
   } catch (error) {
     console.error('Analytics GET error:', error);

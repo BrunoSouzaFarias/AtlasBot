@@ -1,15 +1,13 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { 
-  Bot, 
-  ArrowRight, 
-  Database, 
-  BarChart3, 
+import {
+  Bot,
+  ArrowRight,
+  Database,
+  BarChart3,
   Settings2,
-  CheckCircle,
-  HelpCircle,
-  Code
+  HelpCircle
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -19,7 +17,7 @@ export default function Home() {
     // Check if script is already present
     const existingScript = document.querySelector('script[src*="widget.js"]');
     if (!existingScript) {
-      (window as any).LIBERTYBOT_SETTINGS = {
+      (window as unknown as { LIBERTYBOT_SETTINGS: object }).LIBERTYBOT_SETTINGS = {
         welcomeMessage: 'Olá! Sou o assistente de demonstração da Liberty TI. Como posso ajudar você hoje?',
         primaryColor: '#06b6d4'
       };
@@ -48,7 +46,7 @@ export default function Home() {
           </div>
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-cyan-500/40 rounded-lg text-sm font-semibold transition-all duration-200"
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 rounded-lg text-sm font-semibold transition-all duration-200"
           >
             Entrar no Portal
             <ArrowRight className="w-4 h-4" />
@@ -130,7 +128,7 @@ export default function Home() {
         <div className="mt-16 p-4 bg-slate-900/30 border border-slate-800/80 rounded-2xl max-w-2xl flex items-center gap-3 text-left">
           <HelpCircle className="w-8 h-8 text-cyan-400 shrink-0" />
           <p className="text-xs text-slate-400 leading-relaxed">
-            <strong className="text-slate-200">Dica de Teste:</strong> O widget de chat ativo no canto inferior direito está rodando o script real do bot. Teste enviando mensagens! Você pode gerenciar os documentos do bot clicando em "Carregar Wiki".
+            <strong className="text-slate-200">Dica de Teste:</strong> O widget de chat ativo no canto inferior direito está rodando o script real do bot. Teste enviando mensagens! Você pode gerenciar os documentos do bot clicando em &quot;Carregar Wiki&quot;.
           </p>
         </div>
       </main>
