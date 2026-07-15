@@ -5,6 +5,7 @@ export const chatRequestSchema = z.object({
   message: z.string().trim().min(1, 'Mensagem é obrigatória').max(4000, 'Mensagem muito longa (máx. 4000 caracteres)'),
   sessionId: z.string().max(64).optional(),
   conversationId: z.string().cuid().optional(),
+  attachmentUrl: z.string().optional(),
 });
 
 // --- Feedback ---

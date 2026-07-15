@@ -38,6 +38,7 @@ model Message {
   content        String
   sources        String?      // JSON array of source documents
   feedback       String?      // positive, negative, null
+  attachmentUrl  String?      // URL/caminho da imagem anexada
   createdAt      DateTime     @default(now())
 
   @@map("messages")

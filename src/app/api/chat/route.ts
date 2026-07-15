@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const { message, sessionId, conversationId } = parsed.data;
+    const { message, sessionId, conversationId, attachmentUrl } = parsed.data;
 
     // Get or create conversation — a conversa só continua se pertencer ao
     // mesmo sessionId (impede ler/continuar conversa alheia por cuid adivinhado)
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
         conversationId: conversation.id,
         role: 'user',
         content: message,
+        attachmentUrl: attachmentUrl || null,
       },
     });
 
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
       }));
 
     // Get AI response with RAG
-    const { stream, sources } = await chat(message, chatHistory);
+    const { stream, sources } = await chat(message, chatHistory, attachmentUrl);
 
     // Collect the full response for saving
     let fullResponse = '';

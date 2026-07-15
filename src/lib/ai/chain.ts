@@ -86,7 +86,8 @@ async function localFallbackSearch(
 
 export async function chat(
   question: string,
-  chatHistory: ChatMessage[] = []
+  chatHistory: ChatMessage[] = [],
+  attachmentUrl?: string
 ): Promise<RAGResult> {
   // 1. Search for relevant context (with Qdrant and SQLite fallback)
   let sources: Array<{ content: string; documentName: string; score: number }> = [];
@@ -98,19 +99,32 @@ export async function chat(
   }
 
   // 2. Build context from sources
-  const context = sources.length > 0
+  let context = sources.length > 0
     ? sources
         .map(s => `[Fonte: ${s.documentName}]\n${s.content}`)
         .join('\n\n---\n\n')
     : 'Nenhuma informação relevante encontrada na base de conhecimento.';
 
-  // Load settings from database
+  // 3. Load settings and dynamic image analysis (if screenshot exists)
   const settings = await getSettings();
+  
+  if (attachmentUrl) {
+    try {
+      const { analyzeScreenshot } = await import('./vision');
+      const imageDescription = await analyzeScreenshot(attachmentUrl);
+      if (imageDescription) {
+        context += `\n\n[CONTEÚDO EXTRAÍDO DA IMAGEM ANEXADA]:\n${imageDescription}`;
+      }
+    } catch (visionErr) {
+      console.error('Vision analysis integration error:', visionErr);
+    }
+  }
+
   const systemPrompt = settings.systemPromptExtra
     ? `${SYSTEM_PROMPT}\n\n${settings.systemPromptExtra}`
     : SYSTEM_PROMPT;
 
-  // 3. Stream the response — histórico como turnos reais (não string
+  // 4. Stream the response — histórico como turnos reais (não string
   // concatenada): melhora a qualidade e reduz injection via histórico
   const stream = streamText({
     model: nvidia.chat(settings.model),

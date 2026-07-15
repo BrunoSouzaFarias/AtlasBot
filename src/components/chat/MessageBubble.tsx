@@ -39,6 +39,18 @@ export default function MessageBubble({
           }`}
           style={isUser ? { backgroundColor: primaryColor } : {}}
         >
+          {message.attachmentUrl && (
+            <div className="mb-2 max-w-[260px] overflow-hidden rounded-lg border border-zinc-800/80 bg-zinc-950/40">
+              <img
+                src={message.attachmentUrl}
+                alt="Captura de tela"
+                className="w-full h-auto object-cover max-h-[180px] hover:scale-[1.03] transition-transform duration-200 cursor-pointer"
+                onClick={() => window.open(message.attachmentUrl, '_blank')}
+                title="Clique para abrir em nova guia"
+              />
+            </div>
+          )}
+
           {message.content ? (
             isUser ? (
               <div className="whitespace-pre-wrap select-text">{message.content}</div>

@@ -13,6 +13,7 @@ export interface ChatMessage {
   content: string;
   sources?: ChatSource[];
   feedback?: 'positive' | 'negative' | null;
+  attachmentUrl?: string;
   error?: boolean;
 }
 
@@ -42,7 +43,7 @@ export function useChatStream(initialMessages: ChatMessage[] = []) {
   );
 
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, attachmentUrl?: string) => {
       const message = text.trim();
       if (!message || loading) return;
 
@@ -54,7 +55,7 @@ export function useChatStream(initialMessages: ChatMessage[] = []) {
       setLoading(true);
       setMessages(prev => [
         ...prev,
-        { role: 'user', content: message },
+        { role: 'user', content: message, attachmentUrl },
         { role: 'assistant', content: '' },
       ]);
 
@@ -66,6 +67,7 @@ export function useChatStream(initialMessages: ChatMessage[] = []) {
             message,
             sessionId: sessionIdRef.current,
             conversationId: conversationIdRef.current ?? undefined,
+            attachmentUrl,
           }),
         });
 
