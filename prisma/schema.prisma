@@ -43,20 +43,12 @@ model Message {
   @@map("messages")
 }
 
-model Analytics {
-  id              String   @id @default(cuid())
-  date            DateTime
-  totalConversations Int   @default(0)
-  totalMessages   Int      @default(0)
-  resolvedByBot   Int      @default(0)
-  escalatedToHuman Int     @default(0)
-  positiveFeedback Int     @default(0)
-  negativeFeedback Int     @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 
-  @@unique([date])
-  @@map("analytics")
+  @@map("settings")
 }
 
 model UnansweredQuestion {

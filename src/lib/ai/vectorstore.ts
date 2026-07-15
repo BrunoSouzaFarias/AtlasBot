@@ -1,8 +1,10 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { generateEmbedding, generateEmbeddings } from './embeddings';
+import { v5 as uuidv5 } from 'uuid';
 
 const COLLECTION_NAME = process.env.QDRANT_COLLECTION || 'liberty_knowledge';
 const VECTOR_SIZE = 4096; // nvidia/nv-embed-v1 dimension
+const NAMESPACE_FIXO = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; // Namespace DNS para UUID v5 determinístico
 
 let qdrantClient: QdrantClient | null = null;
 
@@ -48,7 +50,7 @@ export async function upsertChunks(
   const vectors = await generateEmbeddings(chunks);
 
   const points = vectors.map((vector, index) => ({
-    id: `${metadata[index].documentId}-${metadata[index].chunkIndex}`,
+    id: uuidv5(`${metadata[index].documentId}-${metadata[index].chunkIndex}`, NAMESPACE_FIXO),
     vector,
     payload: {
       documentId: metadata[index].documentId,

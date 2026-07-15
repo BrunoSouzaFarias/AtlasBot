@@ -4,16 +4,13 @@ import { searchSimilar } from './vectorstore';
 import { buildRagPrompt, SYSTEM_PROMPT } from './prompts';
 import prisma from '@/lib/db/prisma';
 import { chunkText } from '@/lib/documents/chunker';
+import { getSettings } from '@/lib/settings';
 
 const nvidia = createOpenAI({
   baseURL: 'https://integrate.api.nvidia.com/v1',
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// deepseek-v4-flash responde rápido; o v4-pro fica em fila indefinida na
-// NVIDIA (jul/2026) e travava o chat. Configurável via env até a página de
-// settings persistir isso no banco.
-const LLM_MODEL = process.env.LLM_MODEL || 'deepseek-ai/deepseek-v4-flash';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -107,16 +104,22 @@ export async function chat(
         .join('\n\n---\n\n')
     : 'Nenhuma informação relevante encontrada na base de conhecimento.';
 
+  // Load settings from database
+  const settings = await getSettings();
+  const systemPrompt = settings.systemPromptExtra
+    ? `${SYSTEM_PROMPT}\n\n${settings.systemPromptExtra}`
+    : SYSTEM_PROMPT;
+
   // 3. Stream the response — histórico como turnos reais (não string
   // concatenada): melhora a qualidade e reduz injection via histórico
   const stream = streamText({
-    model: nvidia.chat(LLM_MODEL),
-    system: SYSTEM_PROMPT,
+    model: nvidia.chat(settings.model),
+    system: systemPrompt,
     messages: [
       ...chatHistory.map(m => ({ role: m.role, content: m.content })),
       { role: 'user' as const, content: buildRagPrompt(context, question) },
     ],
-    temperature: 0.3,
+    temperature: settings.temperature,
   });
 
   return { stream, sources };

@@ -18,6 +18,15 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Senha é obrigatória').max(256),
 });
 
+// --- Settings (PUT /api/settings) ---
+export const settingsSchema = z.object({
+  model: z.enum(['deepseek-ai/deepseek-v4-flash', 'deepseek-ai/deepseek-v4-pro']).optional(),
+  temperature: z.number().min(0).max(1).optional(),
+  welcomeMessage: z.string().trim().min(1).max(500).optional(),
+  primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Cor deve ser hex (#rrggbb)').optional(),
+  systemPromptExtra: z.string().max(2000).optional(),
+});
+
 // --- Upload de documentos ---
 // Limite de 4 MB por arquivo: o body de serverless functions na Vercel é ~4.5 MB.
 export const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'txt', 'md'] as const;

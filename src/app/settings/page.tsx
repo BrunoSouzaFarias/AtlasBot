@@ -24,33 +24,65 @@ export default function SettingsPage() {
     'Olá! Como posso ajudar você hoje no suporte da Liberty TI?'
   );
   const [primaryColor, setPrimaryColor] = useState('#06b6d4');
+  const [systemPromptExtra, setSystemPromptExtra] = useState('');
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
   useEffect(() => {
-    // Em microtask para não fazer setState síncrono no effect (regra do compiler).
-    // A Fase 3 troca localStorage por GET /api/settings.
-    queueMicrotask(() => {
-      const savedModel = localStorage.getItem('libertybot_model');
-      const savedTemp = localStorage.getItem('libertybot_temperature');
-      const savedMsg = localStorage.getItem('libertybot_welcome');
-      const savedColor = localStorage.getItem('libertybot_color');
+    let active = true;
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (!res.ok) throw new Error('Falha ao carregar configurações');
+        const data = await res.json();
+        if (active) {
+          setModel(data.model);
+          setTemperature(data.temperature);
+          setWelcomeMessage(data.welcomeMessage);
+          setPrimaryColor(data.primaryColor);
+          setSystemPromptExtra(data.systemPromptExtra || '');
+        }
+      } catch (err) {
+        console.error(err);
+        toast('error', 'Erro ao carregar as configurações do servidor.');
+      } finally {
+        if (active) setLoadingSettings(false);
+      }
+    };
+    fetchSettings();
+    return () => {
+      active = false;
+    };
+  }, [toast]);
 
-      if (savedModel) setModel(savedModel);
-      if (savedTemp) setTemperature(parseFloat(savedTemp));
-      if (savedMsg) setWelcomeMessage(savedMsg);
-      if (savedColor) setPrimaryColor(savedColor);
-    });
-  }, []);
-
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    localStorage.setItem('libertybot_model', model);
-    localStorage.setItem('libertybot_temperature', temperature.toString());
-    localStorage.setItem('libertybot_welcome', welcomeMessage);
-    localStorage.setItem('libertybot_color', primaryColor);
-    setSaving(false);
-    toast('success', 'Configurações salvas com sucesso!');
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          temperature,
+          welcomeMessage,
+          primaryColor,
+          systemPromptExtra,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? 'Falha ao salvar');
+      }
+
+      toast('success', 'Configurações salvas com sucesso!');
+    } catch (err: any) {
+      console.error(err);
+      toast('error', err.message || 'Erro ao salvar as configurações.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const embedCode = `<!-- LibertyBot Chat Widget -->
@@ -68,6 +100,20 @@ export default function SettingsPage() {
     toast('success', 'Código de integração copiado!');
     setTimeout(() => setCopied(false), 2000);
   };
+
+  if (loadingSettings) {
+    return (
+      <AppShell
+        title="Configurações"
+        description="Personalize o comportamento e a aparência do LibertyBot"
+      >
+        <div className="flex justify-center items-center min-h-[300px]" role="status">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500"></div>
+          <span className="sr-only">Carregando configurações...</span>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell
@@ -131,6 +177,22 @@ export default function SettingsPage() {
                   <span>Mais Preciso (0.0)</span>
                   <span>Mais Criativo (1.0)</span>
                 </div>
+              </div>
+              <div>
+                <label
+                  htmlFor="system-prompt-extra"
+                  className="block text-sm font-medium text-slate-400 mb-1.5"
+                >
+                  Instruções Adicionais do Sistema (System Prompt Extra)
+                </label>
+                <textarea
+                  id="system-prompt-extra"
+                  rows={4}
+                  value={systemPromptExtra}
+                  onChange={e => setSystemPromptExtra(e.target.value)}
+                  placeholder="Ex: Responda de forma curta e direta. Sempre pergunte se o cliente quer abrir um chamado."
+                  className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-cyan-500 rounded-lg p-2.5 text-slate-100 outline-none transition-all resize-none"
+                />
               </div>
             </div>
           </Card>

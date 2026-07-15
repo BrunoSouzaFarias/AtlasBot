@@ -3,6 +3,7 @@ import { chat } from '@/lib/ai/chain';
 import prisma from '@/lib/db/prisma';
 import { chatRequestSchema } from '@/lib/validation';
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { FALLBACK_PHRASE } from '@/lib/ai/prompts';
 
 // Streaming de LLM pode passar do timeout default de function na Vercel
 export const maxDuration = 60;
@@ -100,6 +101,34 @@ export async function POST(request: NextRequest) {
               }))),
             },
           });
+
+          // Record unanswered questions (best-effort)
+          try {
+            const hasNoSources = sources.length === 0;
+            const maxScore = sources.length > 0 ? Math.max(...sources.map(s => s.score)) : 0;
+            const isLowScore = maxScore < 0.45;
+            const containsFallback = fullResponse.includes(FALLBACK_PHRASE);
+
+            if (hasNoSources || isLowScore || containsFallback) {
+              const cleanedQuestion = message.trim();
+              const existingQuestion = await prisma.unansweredQuestion.findFirst({
+                where: { question: cleanedQuestion },
+              });
+
+              if (existingQuestion) {
+                await prisma.unansweredQuestion.update({
+                  where: { id: existingQuestion.id },
+                  data: { count: { increment: 1 } },
+                });
+              } else {
+                await prisma.unansweredQuestion.create({
+                  data: { question: cleanedQuestion, count: 1 },
+                });
+              }
+            }
+          } catch (err) {
+            console.error('Failed to log unanswered question:', err);
+          }
 
           // messageId permite ao cliente enviar feedback 👍/👎 real
           controller.enqueue(
