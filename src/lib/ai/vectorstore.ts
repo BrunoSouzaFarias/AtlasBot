@@ -10,8 +10,11 @@ let qdrantClient: QdrantClient | null = null;
 
 function getQdrantClient(): QdrantClient {
   if (!qdrantClient) {
+    const url = process.env.QDRANT_URL || 'http://localhost:6333';
+    const apiKey = process.env.QDRANT_API_KEY;
     qdrantClient = new QdrantClient({
-      url: process.env.QDRANT_URL || 'http://localhost:6333',
+      url,
+      apiKey: apiKey || undefined,
     });
   }
   return qdrantClient;

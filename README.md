@@ -109,9 +109,54 @@ Para adicionar o widget flutuante no seu portal do cliente ou intranet, adicione
 
 ---
 
-## 🎯 Próximos Passos recomendados
+## 🎯 Próximos Passos Recomendados
 
 1. **Testar Ingestão**: Carregue PDFs reais da sua operação na página `/knowledge`.
-2. **Ajustar Prompt**: Modifique o `SYSTEM_PROMPT` in `src/lib/ai/prompts.ts` para customizar as regras de atendimento humano e escalonamento.
-3. **Validar Respostas**: Converse com o bot no widget de demonstração na Home page `/` e verifique as citações das fontes.
-4. **Ver Analytics**: Acesse `/dashboard` após interagir para validar o registro de métricas de uso e feedbacks.
+2. **Ajustar Prompt**: Modifique o `SYSTEM_PROMPT` em [prompts.ts](file:///C:/Users/LIBERTY.TEC020462/OneDrive - Liberty Comercio e Serviços/Área de Trabalho/PROJETOS/liberty-chatbot/src/lib/ai/prompts.ts) para customizar as regras de atendimento humano e escalonamento.
+3. **Validar Respostas**: Converse com o bot no widget de playground e verifique as citações das fontes e a precisão do RAG.
+4. **Ver Analytics**: Acesse `/dashboard` após interagir para validar o registro de métricas e detecção de gaps (perguntas sem resposta).
+
+---
+
+## ☁️ Transição para Produção (Vercel + Neon Postgres + Qdrant Cloud)
+
+Para realizar o deploy em ambiente produtivo, siga os passos abaixo:
+
+### 1. Transicionar o Banco para PostgreSQL (Neon)
+No arquivo [schema.prisma](file:///C:/Users/LIBERTY.TEC020462/OneDrive - Liberty Comercio e Serviços/Área de Trabalho/PROJETOS/liberty-chatbot/prisma/schema.prisma), altere a definição do `datasource db` para utilizar o PostgreSQL:
+
+```prisma
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+```
+
+* **`DATABASE_URL`**: String de conexão pooled do Neon (utilizada pela aplicação em tempo de execução).
+* **`DIRECT_URL`**: String de conexão direta do Neon (necessária para que o Prisma execute as migrations de banco de dados).
+
+### 2. Criar e Aplicar Migrations no Neon
+Execute o comando a seguir no terminal apontando para a sua base de dados Neon para inicializar a estrutura de tabelas:
+
+```bash
+# Apague a pasta prisma/migrations (que pode conter histórico local de SQLite)
+# Execute o comando abaixo para gerar o schema inicial no Neon:
+npx prisma migrate dev --name init
+```
+
+### 3. Deploy na Vercel
+O projeto já está configurado com o script `"vercel-build"` no `package.json`, o qual aplica automaticamente `prisma migrate deploy` a cada build de produção na Vercel.
+
+Configure as seguintes variáveis de ambiente no painel da Vercel:
+* `DATABASE_URL`: Connection string pooled (SSL obrigatório).
+* `DIRECT_URL`: Connection string direct (SSL obrigatório).
+* `OPENAI_API_KEY`: Chave da NVIDIA AI.
+* `QDRANT_URL`: Endpoint do cluster Qdrant Cloud.
+* `QDRANT_API_KEY`: API Key do cluster Qdrant Cloud.
+* `QDRANT_COLLECTION`: Nome da coleção (ex.: `liberty_knowledge`).
+* `ADMIN_PASSWORD`: Senha para acessar o painel administrativo.
+* `AUTH_SECRET`: Segredo para assinar o cookie JWT (gere com `openssl rand -base64 32`).
+* `NEXT_PUBLIC_APP_URL`: URL de produção do seu app na Vercel (ex.: `https://seu-app.vercel.app`).
+* `NEXT_PUBLIC_APP_NAME`: `LibertyBot`.
+```
