@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-secret-key-must-be-32-chars-long!';
+const ENCRYPTION_KEY = (process.env.ENCRYPTION_KEY || 'default-secret-key-must-be-32-chars-long!').replace(/\s/g, '');
 
 /**
  * Criptografa uma string usando AES-256-GCM.

@@ -8,7 +8,8 @@ const globalForPrisma = globalThis as unknown as {
 
 let prismaInstance: PrismaClient;
 
-const databaseUrl = process.env.DATABASE_URL || '';
+const databaseUrl = (process.env.DATABASE_URL || '').replace(/\s/g, '');
+const tursoAuthToken = (process.env.TURSO_AUTH_TOKEN || '').replace(/\s/g, '');
 
 if (
   databaseUrl.startsWith('libsql://') ||
@@ -18,7 +19,7 @@ if (
   // Conexão remota do Turso utilizando o Driver Adapter LibSQL para ambientes serverless
   const client = createClient({
     url: databaseUrl,
-    ...(process.env.TURSO_AUTH_TOKEN ? { authToken: process.env.TURSO_AUTH_TOKEN } : {}),
+    ...(tursoAuthToken ? { authToken: tursoAuthToken } : {}),
   });
   const adapter = new PrismaLibSQL(client);
   prismaInstance = new PrismaClient({ adapter });
