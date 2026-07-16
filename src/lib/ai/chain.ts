@@ -7,8 +7,8 @@ import { chunkText } from '@/lib/documents/chunker';
 import { getSettings } from '@/lib/settings';
 
 const nvidia = createOpenAI({
-  baseURL: 'https://integrate.api.nvidia.com/v1',
-  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: process.env.LLM_BASE_URL || 'https://integrate.api.nvidia.com/v1',
+  apiKey: process.env.OPENAI_API_KEY || process.env.DEEPSEEK_API_KEY || '',
 });
 
 
