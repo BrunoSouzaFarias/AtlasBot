@@ -115,11 +115,6 @@ function WidgetContent() {
       return;
     }
 
-    if (!unitsData.includes(formUnit)) {
-      toast('error', 'Selecione uma unidade de saúde válida na lista.');
-      return;
-    }
-
     const cleanCpf = formCpf.replace(/\D/g, '');
     if (cleanCpf.length !== 11) {
       toast('error', 'CPF deve possuir 11 dígitos.');
