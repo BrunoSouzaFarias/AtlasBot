@@ -453,7 +453,9 @@ function WidgetContent() {
                 placeholder="Digite e selecione sua unidade..."
                 value={unitSearch}
                 onChange={(e) => {
-                  setUnitSearch(e.target.value);
+                  const val = e.target.value;
+                  setUnitSearch(val);
+                  setFormUnit(val);
                   setShowUnitDropdown(true);
                 }}
                 onFocus={() => setShowUnitDropdown(true)}
@@ -470,7 +472,7 @@ function WidgetContent() {
                       <button
                         key={unit}
                         type="button"
-                        onClick={() => {
+                        onMouseDown={() => {
                           setFormUnit(unit);
                           setUnitSearch(unit);
                           setShowUnitDropdown(false);
