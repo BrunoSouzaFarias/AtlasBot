@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Bot, User, ThumbsUp, ThumbsDown, Loader2, FileText } from 'lucide-react';
+import { Bot, User, ThumbsUp, ThumbsDown, Loader2, FileText, UserCheck } from 'lucide-react';
 import Markdown from './Markdown';
 import type { ChatMessage } from '@/hooks/useChatStream';
 
@@ -15,32 +15,53 @@ export default function MessageBubble({
   onFeedback?: (messageId: string, type: 'positive' | 'negative') => void;
 }) {
   const isUser = message.role === 'user';
+  const isAgent = message.role === 'agent';
+  const isSystem = message.role === 'system';
+
+  // Mensagens de sistema centralizadas e discretas no tema claro
+  if (isSystem) {
+    return (
+      <div className="flex justify-center w-full my-2 animate-fade-in">
+        <span className="px-3.5 py-1.5 rounded-full bg-slate-100 border border-slate-200/80 text-slate-500 text-xs font-semibold text-center max-w-[90%] select-none shadow-sm">
+          {message.content}
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <div className={`flex gap-3 max-w-[85%] ${isUser ? 'ml-auto flex-row-reverse' : ''}`}>
+    <div className={`flex gap-3 max-w-[85%] ${isUser ? 'ml-auto flex-row-reverse' : ''} animate-fade-in`}>
       {/* Avatar */}
       <div
-        className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center select-none ${
-          isUser ? 'bg-slate-800 text-slate-200' : ''
+        className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center select-none shadow-sm ${
+          isUser ? 'bg-slate-150 text-slate-650 border border-slate-200' : ''
         }`}
-        style={!isUser ? { backgroundColor: `${primaryColor}15`, color: primaryColor } : {}}
+        style={!isUser ? { backgroundColor: `${primaryColor}15`, color: primaryColor, border: `1px solid ${primaryColor}25` } : {}}
         aria-hidden="true"
       >
-        {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+        {isUser ? (
+          <User className="w-4 h-4" />
+        ) : isAgent ? (
+          <UserCheck className="w-4 h-4" />
+        ) : (
+          <Bot className="w-4 h-4" />
+        )}
       </div>
 
       {/* Bolha */}
       <div className="space-y-2 min-w-0">
         <div
-          className={`p-3 rounded-2xl text-sm leading-relaxed ${
+          className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
             isUser
               ? 'rounded-tr-none text-white'
-              : 'bg-slate-900/80 border border-slate-800/60 rounded-tl-none text-slate-200'
+              : isAgent
+              ? 'bg-blue-50 border border-blue-100 rounded-tl-none text-slate-800'
+              : 'bg-white border border-slate-200/80 rounded-tl-none text-slate-850'
           }`}
           style={isUser ? { backgroundColor: primaryColor } : {}}
         >
           {message.attachmentUrl && (
-            <div className="mb-2 max-w-[260px] overflow-hidden rounded-lg border border-zinc-800/80 bg-zinc-950/40">
+            <div className="mb-2 max-w-[260px] overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
               <img
                 src={message.attachmentUrl}
                 alt="Captura de tela"
@@ -52,32 +73,32 @@ export default function MessageBubble({
           )}
 
           {message.content ? (
-            isUser ? (
-              <div className="whitespace-pre-wrap select-text">{message.content}</div>
+            isUser || isAgent ? (
+              <div className="whitespace-pre-wrap select-text font-normal">{message.content}</div>
             ) : (
               <Markdown content={message.content} />
             )
           ) : (
-            <div className="flex items-center gap-2 text-slate-400 py-1 font-medium">
-              <Loader2 className="w-4 h-4 animate-spin text-cyan-400" aria-hidden="true" />
+            <div className="flex items-center gap-2 text-slate-500 py-1 font-medium">
+              <Loader2 className="w-4 h-4 animate-spin text-blue-600" aria-hidden="true" />
               Buscando na Wiki...
             </div>
           )}
         </div>
 
-        {/* Fontes + Feedback */}
-        {!isUser && message.content && !message.error && (
-          <div className="flex flex-col gap-2 pl-1">
+        {/* Fontes + Feedback (apenas para o Assistant da IA) */}
+        {message.role === 'assistant' && message.content && !message.error && (
+          <div className="flex flex-col gap-2 pl-1 select-none">
             {message.sources && message.sources.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
                 <span>Fontes:</span>
                 {message.sources.slice(0, 3).map((src, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-900 border border-slate-800/80 rounded text-[10px] text-slate-400 font-medium max-w-[150px] truncate"
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] text-slate-600 font-semibold max-w-[150px] truncate"
                     title={`${src.documentName} (Relevância: ${Math.round(src.score * 100)}%)`}
                   >
-                    <FileText className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
+                    <FileText className="w-2.5 h-2.5 shrink-0 text-slate-500" aria-hidden="true" />
                     {src.documentName}
                   </span>
                 ))}
@@ -85,14 +106,14 @@ export default function MessageBubble({
             )}
 
             {onFeedback && message.id && (
-              <div className="flex items-center gap-2 text-xs text-slate-400 select-none">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
                 <span>Esta resposta foi útil?</span>
                 <button
                   onClick={() => onFeedback(message.id!, 'positive')}
                   aria-label="Resposta útil"
                   aria-pressed={message.feedback === 'positive'}
-                  className={`p-1 hover:text-emerald-400 hover:bg-slate-900 rounded transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 ${
-                    message.feedback === 'positive' ? 'text-emerald-400 bg-slate-900' : ''
+                  className={`p-1 hover:text-emerald-600 hover:bg-slate-100 rounded transition-all cursor-pointer outline-none ${
+                    message.feedback === 'positive' ? 'text-emerald-600 bg-emerald-50 border border-emerald-100' : ''
                   }`}
                 >
                   <ThumbsUp className="w-3.5 h-3.5" aria-hidden="true" />
@@ -101,8 +122,8 @@ export default function MessageBubble({
                   onClick={() => onFeedback(message.id!, 'negative')}
                   aria-label="Resposta não foi útil"
                   aria-pressed={message.feedback === 'negative'}
-                  className={`p-1 hover:text-rose-400 hover:bg-slate-900 rounded transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 ${
-                    message.feedback === 'negative' ? 'text-rose-400 bg-slate-900' : ''
+                  className={`p-1 hover:text-rose-600 hover:bg-slate-100 rounded transition-all cursor-pointer outline-none ${
+                    message.feedback === 'negative' ? 'text-rose-600 bg-rose-50 border border-rose-100' : ''
                   }`}
                 >
                   <ThumbsDown className="w-3.5 h-3.5" aria-hidden="true" />

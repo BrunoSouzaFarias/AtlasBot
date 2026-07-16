@@ -9,7 +9,7 @@ export interface ChatSource {
 
 export interface ChatMessage {
   id?: string; // messageId do banco (chega no evento 'done') — habilita feedback
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'agent' | 'system';
   content: string;
   sources?: ChatSource[];
   feedback?: 'positive' | 'negative' | null;
@@ -43,7 +43,7 @@ export function useChatStream(initialMessages: ChatMessage[] = []) {
   );
 
   const send = useCallback(
-    async (text: string, attachmentUrl?: string) => {
+    async (text: string, attachmentUrl?: string, isHuman?: boolean) => {
       const message = text.trim();
       if (!message || loading) return;
 
@@ -53,11 +53,18 @@ export function useChatStream(initialMessages: ChatMessage[] = []) {
       }
 
       setLoading(true);
-      setMessages(prev => [
-        ...prev,
-        { role: 'user', content: message, attachmentUrl },
-        { role: 'assistant', content: '' },
-      ]);
+      if (isHuman) {
+        setMessages(prev => [
+          ...prev,
+          { role: 'user', content: message, attachmentUrl },
+        ]);
+      } else {
+        setMessages(prev => [
+          ...prev,
+          { role: 'user', content: message, attachmentUrl },
+          { role: 'assistant', content: '' },
+        ]);
+      }
 
       try {
         const response = await fetch('/api/chat', {
@@ -124,16 +131,18 @@ export function useChatStream(initialMessages: ChatMessage[] = []) {
           }
         }
 
-        if (!assistantText) {
+        if (!isHuman && !assistantText) {
           throw new Error('Resposta vazia');
         }
       } catch (err) {
         console.error('Chat error:', err);
-        updateLastAssistant({
-          content:
-            'Desculpe, ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.',
-          error: true,
-        });
+        if (!isHuman) {
+          updateLastAssistant({
+            content:
+              'Desculpe, ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.',
+            error: true,
+          });
+        }
       } finally {
         setLoading(false);
       }

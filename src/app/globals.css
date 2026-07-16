@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b; /* zinc-950 — true premium dark neutral charcoal/black */
-  --foreground: #f4f4f5; /* zinc-100 */
-  color-scheme: dark;
+  --background: #f8fafc; /* slate-50 — Fundo claro limpo e profissional */
+  --foreground: #0f172a; /* slate-900 — Texto escuro de alta legibilidade */
+  color-scheme: light;
 }
 
 @theme inline {
@@ -12,11 +12,11 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Tokens de marca Liberty (base: gold/amber #f59e0b) */
-  --color-brand-300: #fcd34d; /* amber-300 */
-  --color-brand-400: #fbbf24; /* amber-400 */
-  --color-brand-500: #f59e0b; /* amber-500 */
-  --color-brand-600: #d97706; /* amber-600 */
+  /* Tokens de marca Liberty Health (base: blue #004E92) */
+  --color-brand-300: #7FDBFF; /* azul claro / highlight */
+  --color-brand-400: #00a8e8; /* azul royal brilhante */
+  --color-brand-500: #004E92; /* azul marinho principal */
+  --color-brand-600: #003B73; /* azul escuro profundo */
 }
 
 body {
@@ -25,10 +25,10 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Scrollbar discreta em tons neutros premium */
+/* Scrollbar discreta para tema claro */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #27272a transparent;
+  scrollbar-color: #cbd5e1 transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
@@ -38,14 +38,14 @@ body {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background-color: #27272a; /* zinc-800 */
+  background-color: #cbd5e1; /* slate-300 */
   border-radius: 8px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #3f3f46; /* zinc-700 */
+  background-color: #94a3b8; /* slate-400 */
 }
 
-/* Tipografia das respostas do bot (markdown renderizado) */
+/* Tipografia das respostas do bot (markdown renderizado no tema claro) */
 .chat-markdown > *:first-child {
   margin-top: 0;
 }
@@ -70,25 +70,26 @@ body {
   margin: 0.25em 0;
 }
 .chat-markdown strong {
-  color: #ffffff;
+  color: #0f172a; /* slate-900 */
   font-weight: 600;
 }
 .chat-markdown a {
-  color: var(--color-brand-400);
+  color: var(--color-brand-500);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 .chat-markdown code {
-  background: #18181b; /* zinc-900 */
-  border: 1px solid #27272a; /* zinc-800 */
+  background: #f1f5f9; /* slate-100 */
+  border: 1px solid #e2e8f0; /* slate-200 */
   border-radius: 4px;
   padding: 0.1em 0.35em;
   font-family: var(--font-mono), monospace;
   font-size: 0.85em;
+  color: #0f172a;
 }
 .chat-markdown pre {
-  background: #18181b; /* zinc-900 */
-  border: 1px solid #27272a; /* zinc-800 */
+  background: #f1f5f9; /* slate-100 */
+  border: 1px solid #e2e8f0; /* slate-200 */
   border-radius: 8px;
   padding: 0.75em;
   margin: 0.5em 0;
@@ -104,15 +105,15 @@ body {
 .chat-markdown h3,
 .chat-markdown h4 {
   font-weight: 700;
-  color: #ffffff;
+  color: #0f172a;
   margin: 0.75em 0 0.35em;
   font-size: 1.05em;
 }
 .chat-markdown blockquote {
-  border-left: 3px solid #3f3f46; /* zinc-700 */
+  border-left: 3px solid #cbd5e1; /* slate-300 */
   padding-left: 0.75em;
   margin: 0.5em 0;
-  color: #a1a1aa; /* zinc-400 */
+  color: #475569; /* slate-600 */
 }
 .chat-markdown table {
   border-collapse: collapse;
@@ -121,6 +122,6 @@ body {
 }
 .chat-markdown th,
 .chat-markdown td {
-  border: 1px solid #27272a; /* zinc-800 */
+  border: 1px solid #e2e8f0; /* slate-200 */
   padding: 0.3em 0.6em;
 }

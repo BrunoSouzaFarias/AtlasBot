@@ -8,7 +8,7 @@ export function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className={`bg-slate-900/35 border border-slate-800 rounded-xl p-6 ${className}`}>
+    <div className={`bg-white border border-slate-200 rounded-xl p-6 shadow-sm ${className}`}>
       {children}
     </div>
   );
@@ -25,11 +25,11 @@ export function CardHeader({
 }) {
   return (
     <div className="mb-4">
-      <h2 className="text-lg font-bold text-white flex items-center gap-2">
+      <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
         {icon}
         {title}
       </h2>
-      {description && <p className="text-slate-400 text-xs mt-1">{description}</p>}
+      {description && <p className="text-slate-500 text-xs mt-1">{description}</p>}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   XCircle,
   Loader2,
   Search,
+  RefreshCw,
 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import UploadDropzone from '@/components/knowledge/UploadDropzone';
@@ -46,6 +47,11 @@ export default function KnowledgeBase() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Estados para sincronização do Confluence
+  const [confluenceSpaceKey, setConfluenceSpaceKey] = useState('');
+  const [syncingConfluence, setSyncingConfluence] = useState(false);
+  const [confluenceResult, setConfluenceResult] = useState<string | null>(null);
+
   const handleUpload = async (files: File[]) => {
     setUploading(true);
     const formData = new FormData();
@@ -65,6 +71,39 @@ export default function KnowledgeBase() {
       toast('error', 'Erro de conexão durante o envio.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleConfluenceSync = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!confluenceSpaceKey.trim()) return;
+
+    setSyncingConfluence(true);
+    setConfluenceResult(null);
+
+    try {
+      const res = await fetch('/api/documents/confluence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spaceKey: confluenceSpaceKey.trim() }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast('success', `Sincronização iniciada com sucesso.`);
+        setConfluenceResult(`Sucesso: ${data.results?.length ?? 0} página(s) processada(s).`);
+        setConfluenceSpaceKey('');
+        await refresh();
+      } else {
+        toast('error', data.error || 'Erro na sincronização.');
+        setConfluenceResult(`Erro: ${data.error}`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast('error', 'Erro de rede na sincronização.');
+      setConfluenceResult('Erro de rede.');
+    } finally {
+      setSyncingConfluence(false);
     }
   };
 
@@ -95,93 +134,149 @@ export default function KnowledgeBase() {
   return (
     <AppShell
       title="Base de Conhecimento"
-      description="Carregue manuais, procedimentos e scripts de suporte N1"
+      description="Carregue manuais ou integre com o Jira Confluence para treinar o chatbot"
     >
-      <div className="max-w-6xl mx-auto grid grid-cols-1 gap-6">
-        <UploadDropzone
-          uploading={uploading}
-          onUpload={handleUpload}
-          onValidationError={msg => toast('error', msg)}
-        />
-
-        {/* Busca */}
-        <div className="relative">
-          <Search
-            className="w-5 h-5 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            aria-label="Pesquisar documentos"
-            placeholder="Pesquisar documentos..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-cyan-500 rounded-xl pl-12 pr-4 py-3 text-slate-100 placeholder-slate-500 outline-none transition-all"
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Painel Esquerdo: Dropzone de arquivos (ocupa 2 colunas) */}
+        <div className="lg:col-span-2 space-y-6">
+          <UploadDropzone
+            uploading={uploading}
+            onUpload={handleUpload}
+            onValidationError={msg => toast('error', msg)}
           />
         </div>
 
-        {/* Lista */}
-        <div className="bg-slate-900/35 border border-slate-800 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-slate-800 bg-slate-900/50">
-            <h2 className="font-semibold text-white">
-              Documentos Indexados ({filteredDocuments.length})
+        {/* Painel Direito: Integração Confluence */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+          <div className="space-y-4">
+            <h2 className="text-md font-bold text-white flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-cyan-400" />
+              Integração Confluence
             </h2>
+            <p className="text-xs text-slate-400">
+              Sincronize páginas inteiras do seu Confluence diretamente na base de conhecimento usando a API da Atlassian.
+            </p>
+
+            <form onSubmit={handleConfluenceSync} className="space-y-3 pt-2">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Chave do Espaço (Space Key)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: TI, SUP, KB"
+                  value={confluenceSpaceKey}
+                  onChange={e => setConfluenceSpaceKey(e.target.value)}
+                  className="w-full text-xs bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={syncingConfluence || !confluenceSpaceKey.trim()}
+                className="w-full text-xs font-bold py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+              >
+                {syncingConfluence ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Sincronizando...
+                  </>
+                ) : (
+                  'Sincronizar Espaço'
+                )}
+              </button>
+            </form>
           </div>
 
-          {loading ? (
-            <Spinner label="Buscando documentos..." className="p-12" />
-          ) : error ? (
-            <EmptyState
-              icon={<XCircle className="w-12 h-12" />}
-              title="Erro ao carregar documentos"
-              description={error}
+          {confluenceResult && (
+            <div className={`mt-4 p-3 rounded-lg border text-xs font-medium ${
+              confluenceResult.startsWith('Erro')
+                ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+            }`}>
+              {confluenceResult}
+            </div>
+          )}
+        </div>
+
+        {/* Busca e Tabela de Documentos (ocupa largura cheia) */}
+        <div className="lg:col-span-3 space-y-6 pt-4">
+          <div className="relative">
+            <Search
+              className="w-5 h-5 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2"
+              aria-hidden="true"
             />
-          ) : filteredDocuments.length > 0 ? (
-            <ul className="divide-y divide-slate-800/80">
-              {filteredDocuments.map(doc => (
-                <li
-                  key={doc.id}
-                  className="p-4 flex items-center justify-between gap-4 hover:bg-slate-900/20 transition-all"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className="p-2.5 bg-slate-950 text-slate-400 rounded-lg border border-slate-800 shrink-0"
-                      aria-hidden="true"
-                    >
-                      <FileText className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-medium text-white truncate pr-4">{doc.name}</h3>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-500">
-                        <span className="uppercase">{doc.type}</span>
-                        <span aria-hidden="true">•</span>
-                        <span>{doc.chunks} partes</span>
-                        <span aria-hidden="true">•</span>
-                        <span>{new Date(doc.createdAt).toLocaleDateString('pt-BR')}</span>
+            <input
+              type="search"
+              aria-label="Pesquisar documentos"
+              placeholder="Pesquisar documentos..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-cyan-500 rounded-xl pl-12 pr-4 py-3 text-slate-100 placeholder-slate-500 outline-none transition-all"
+            />
+          </div>
+
+          <div className="bg-slate-900/35 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="p-4 border-b border-slate-800 bg-slate-900/50">
+              <h2 className="font-semibold text-white">
+                Documentos Indexados ({filteredDocuments.length})
+              </h2>
+            </div>
+
+            {loading ? (
+              <Spinner label="Buscando documentos..." className="p-12" />
+            ) : error ? (
+              <EmptyState
+                icon={<XCircle className="w-12 h-12" />}
+                title="Erro ao carregar documentos"
+                description={error}
+              />
+            ) : filteredDocuments.length > 0 ? (
+              <ul className="divide-y divide-slate-800/80">
+                {filteredDocuments.map(doc => (
+                  <li
+                    key={doc.id}
+                    className="p-4 flex items-center justify-between gap-4 hover:bg-slate-900/20 transition-all"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="p-2.5 bg-slate-950 text-slate-400 rounded-lg border border-slate-800 shrink-0"
+                        aria-hidden="true"
+                      >
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-medium text-white truncate pr-4">{doc.name}</h3>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-500">
+                          <span className="uppercase">{doc.type}</span>
+                          <span aria-hidden="true">•</span>
+                          <span>{doc.chunks} partes</span>
+                          <span aria-hidden="true">•</span>
+                          <span>{new Date(doc.createdAt).toLocaleDateString('pt-BR')}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-4 shrink-0">
-                    {statusBadge[doc.status]}
-                    <button
-                      onClick={() => setDeleteTarget({ id: doc.id, name: doc.name })}
-                      aria-label={`Deletar documento ${doc.name}`}
-                      className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/5 rounded-lg border border-transparent hover:border-rose-500/10 transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40"
-                    >
-                      <Trash2 className="w-4 h-4" aria-hidden="true" />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyState
-              icon={<FileText className="w-12 h-12" />}
-              title="Nenhum documento encontrado"
-              description="Carregue arquivos para treinar a IA do LibertyBot."
-            />
-          )}
+                    <div className="flex items-center gap-4 shrink-0">
+                      {statusBadge[doc.status]}
+                      <button
+                        onClick={() => setDeleteTarget({ id: doc.id, name: doc.name })}
+                        aria-label={`Deletar documento ${doc.name}`}
+                        className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/5 rounded-lg border border-transparent hover:border-rose-500/10 transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40"
+                      >
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState
+                icon={<FileText className="w-12 h-12" />}
+                title="Nenhum documento encontrado"
+                description="Carregue arquivos ou integre o Confluence para treinar a IA do LibertyBot."
+              />
+            )}
+          </div>
         </div>
       </div>
 

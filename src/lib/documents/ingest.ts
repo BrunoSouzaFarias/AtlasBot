@@ -84,6 +84,75 @@ export async function ingestDocument(
   }
 }
 
+export async function ingestRawText(
+  fileName: string,
+  content: string,
+  type: string = 'confluence'
+): Promise<IngestResult> {
+  // 1. Create document record
+  const document = await prisma.document.create({
+    data: {
+      name: fileName,
+      type: type,
+      content: '',
+      status: 'processing',
+    },
+  });
+
+  try {
+    // 2. Chunk the content
+    const chunks = chunkText(content, {
+      chunkSize: 1000,
+      chunkOverlap: 200,
+    });
+
+    // 3. Generate embeddings and store in vector DB (with try/catch fallback)
+    try {
+      const chunkTexts = chunks.map(c => c.content);
+      const chunkMetadata: ChunkMetadata[] = chunks.map(c => ({
+        documentId: document.id,
+        documentName: fileName,
+        chunkIndex: c.index,
+        content: c.content,
+      }));
+
+      await upsertChunks(chunkTexts, chunkMetadata);
+    } catch (vectorError) {
+      console.warn('Qdrant vector store offline or error. Storing document only in local database.', vectorError);
+    }
+
+    // 4. Update document record
+    await prisma.document.update({
+      where: { id: document.id },
+      data: {
+        content: content, // Store full content for local search fallback
+        chunks: chunks.length,
+        status: 'ready',
+      },
+    });
+
+    return {
+      documentId: document.id,
+      chunksCreated: chunks.length,
+      status: 'success',
+    };
+  } catch (error) {
+    console.error('Ingest error:', error);
+    // Update document as error
+    await prisma.document.update({
+      where: { id: document.id },
+      data: { status: 'error' },
+    });
+
+    return {
+      documentId: document.id,
+      chunksCreated: 0,
+      status: 'error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
 export async function deleteDocument(documentId: string): Promise<void> {
   // Delete from vector DB (with try/catch fallback)
   try {

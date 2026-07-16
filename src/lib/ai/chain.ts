@@ -1,5 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { streamText } from 'ai';
+import { streamText, generateText } from 'ai';
 import { searchSimilar } from './vectorstore';
 import { buildRagPrompt, SYSTEM_PROMPT } from './prompts';
 import prisma from '@/lib/db/prisma';
@@ -137,4 +137,35 @@ export async function chat(
   });
 
   return { stream, sources };
+}
+
+/**
+ * Gera um resumo conciso da conversa entre o cliente e o chatbot
+ * para dar contexto rápido ao técnico humano do suporte N2.
+ */
+export async function summarizeConversation(
+  messages: Array<{ role: string; content: string }>
+): Promise<string> {
+  const settings = await getSettings();
+  const conversationString = messages
+    .filter(m => ['user', 'assistant'].includes(m.role))
+    .map(m => `${m.role === 'user' ? 'Cliente' : 'Chatbot'}: ${m.content}`)
+    .join('\n');
+
+  if (!conversationString.trim()) {
+    return 'Nenhuma interação anterior registrada com o chatbot.';
+  }
+
+  try {
+    const { text } = await generateText({
+      model: nvidia.chat(settings.model),
+      system: 'Você é um assistente de suporte especializado em resumir conversas de chat de forma muito concisa e direta para técnicos humanos de suporte N2 da Liberty TI. Foque exclusivamente no problema relatado pelo cliente e nas soluções sugeridas pelo chatbot que falharam. Seja breve (limite-se a 3-4 tópicos curtos). Nunca invente informações.',
+      prompt: `Aqui está a conversa entre o cliente e o chatbot virtual:\n\n${conversationString}\n\nPor favor, gere um resumo conciso e direto em tópicos.`,
+      temperature: 0.2,
+    });
+    return text.trim();
+  } catch (err) {
+    console.error('Failed to generate conversation summary:', err);
+    return 'Erro de conexão ao gerar o resumo automático da conversa.';
+  }
 }

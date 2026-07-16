@@ -4,6 +4,7 @@ import prisma from '@/lib/db/prisma';
 import { chatRequestSchema } from '@/lib/validation';
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { FALLBACK_PHRASE } from '@/lib/ai/prompts';
+import { emitChatEvent } from '@/lib/chats/events';
 
 // Streaming de LLM pode passar do timeout default de function na Vercel
 export const maxDuration = 60;
@@ -25,8 +26,7 @@ export async function POST(request: NextRequest) {
     }
     const { message, sessionId, conversationId, attachmentUrl } = parsed.data;
 
-    // Get or create conversation — a conversa só continua se pertencer ao
-    // mesmo sessionId (impede ler/continuar conversa alheia por cuid adivinhado)
+    // Get or create conversation
     let conversation;
     if (conversationId) {
       conversation = await prisma.conversation.findUnique({
@@ -45,14 +45,66 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Se o atendimento humano estiver ativo (status WAITING ou ACTIVE),
+    // apenas salvamos a mensagem do usuário e notificamos o técnico, sem acionar a IA.
+    if (conversation.status !== 'BOT') {
+      const userMsg = await prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          role: 'user',
+          content: message,
+          attachmentUrl: attachmentUrl || null,
+        },
+      });
+
+      // Notificar técnico pelo canal de eventos da conversa
+      emitChatEvent(conversation.id, {
+        type: 'message',
+        conversationId: conversation.id,
+        payload: userMsg,
+      });
+
+      const readableStream = new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ type: 'meta', conversationId: conversation.id, sources: [] })}\n\n`
+            )
+          );
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: 'done', messageId: userMsg.id })}\n\n`)
+          );
+          controller.close();
+        },
+      });
+
+      return new Response(readableStream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
+
+    // --- Fluxo Padrão de IA / Bot ---
+
     // Save user message
-    await prisma.message.create({
+    const userMsg = await prisma.message.create({
       data: {
         conversationId: conversation.id,
         role: 'user',
         content: message,
         attachmentUrl: attachmentUrl || null,
       },
+    });
+
+    // Notificar técnico e qualquer escuta em tempo real do início do chat
+    emitChatEvent(conversation.id, {
+      type: 'message',
+      conversationId: conversation.id,
+      payload: userMsg,
     });
 
     // Build chat history — as mensagens vêm em `desc` (10 mais recentes);
@@ -101,6 +153,13 @@ export async function POST(request: NextRequest) {
                 score: s.score,
               }))),
             },
+          });
+
+          // Notificar em tempo real
+          emitChatEvent(conversation.id, {
+            type: 'message',
+            conversationId: conversation.id,
+            payload: savedMessage,
           });
 
           // Record unanswered questions (best-effort)
