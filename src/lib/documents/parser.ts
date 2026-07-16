@@ -28,21 +28,15 @@ export async function parseDocument(
 
 async function parsePdf(buffer: Buffer): Promise<ParsedDocument> {
   const require = createRequire(import.meta.url);
-  const { PDFParse } = require('pdf-parse');
-  const parser = new PDFParse({ data: buffer });
-  try {
-    const textResult = await parser.getText();
-    const infoResult = await parser.getInfo();
-    return {
-      content: textResult.text,
-      metadata: {
-        pageCount: infoResult.total,
-        title: infoResult.info?.Title || undefined,
-      },
-    };
-  } finally {
-    await parser.destroy();
-  }
+  const pdf = require('pdf-parse');
+  const data = await pdf(buffer);
+  return {
+    content: data.text || '',
+    metadata: {
+      pageCount: data.numpages,
+      title: data.info?.Title || undefined,
+    },
+  };
 }
 
 async function parseDocx(buffer: Buffer): Promise<ParsedDocument> {
