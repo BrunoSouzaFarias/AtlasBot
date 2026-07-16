@@ -44,11 +44,11 @@ export default function AppShell({
         className="border-b border-slate-200 bg-white/90 backdrop-blur-md sticky top-0 z-50 shadow-sm"
       >
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="Página inicial LibertyBot">
+          <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="Página inicial AtlasBot">
             <div className="w-7 h-7 rounded-lg bg-blue-600/10 flex items-center justify-center border border-blue-500/20 text-blue-600">
               <Bot className="w-4 h-4" aria-hidden="true" />
             </div>
-            <span className="font-bold text-sm text-slate-900 hidden sm:inline">LibertyBot</span>
+            <span className="font-bold text-sm text-slate-900 hidden sm:inline">AtlasBot</span>
           </Link>
 
           <div className="flex items-center gap-1 overflow-x-auto">

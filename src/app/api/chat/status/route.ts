@@ -49,7 +49,10 @@ export async function POST(request: NextRequest) {
     // Atualizar conversa no banco
     const updatedConversation = await prisma.conversation.update({
       where: { id: conversationId },
-      data: { status },
+      data: { 
+        status,
+        statusChangedAt: new Date(),
+      },
     });
 
     let systemMsg = null;

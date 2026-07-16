@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { decrypt } from '@/lib/crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
     const formattedMessages = conversation.messages.map((m) => ({
       id: m.id,
       role: m.role as 'user' | 'assistant' | 'agent' | 'system',
-      content: m.content,
+      content: decrypt(m.content) as string,
       createdAt: m.createdAt,
       attachmentUrl: m.attachmentUrl,
       sources: m.sources ? JSON.parse(m.sources) : undefined,
@@ -41,9 +42,9 @@ export async function GET(request: NextRequest) {
     return Response.json({
       conversationId: conversation.id,
       status: conversation.status,
-      userName: conversation.userName,
-      userCpf: conversation.userCpf,
-      userEmail: conversation.userEmail,
+      userName: decrypt(conversation.userName),
+      userCpf: decrypt(conversation.userCpf),
+      userEmail: decrypt(conversation.userEmail),
       userUnit: conversation.userUnit,
       messages: formattedMessages,
     });

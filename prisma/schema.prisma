@@ -21,16 +21,17 @@ model Document {
 }
 
 model Conversation {
-  id          String    @id @default(cuid())
-  sessionId   String
-  status      String    @default("BOT") // BOT, WAITING, ACTIVE, CLOSED
-  userName    String?
-  userCpf     String?
-  userEmail   String?
-  userUnit    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  messages    Message[]
+  id              String    @id @default(cuid())
+  sessionId       String
+  status          String    @default("BOT") // BOT, WAITING, ACTIVE, CLOSED
+  userName        String?
+  userCpf         String?
+  userEmail       String?
+  userUnit        String?
+  statusChangedAt DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  messages        Message[]
 
   @@map("conversations")
 }
@@ -73,4 +74,16 @@ model RateLimit {
   count       Int      @default(0)
 
   @@map("rate_limits")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String   // Hash gerado por bcrypt
+  role      String   @default("AGENT") // AGENT, ADMIN
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
 }

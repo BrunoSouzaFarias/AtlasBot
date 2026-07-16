@@ -5,6 +5,7 @@ import { chatRequestSchema } from '@/lib/validation';
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import { FALLBACK_PHRASE } from '@/lib/ai/prompts';
 import { emitChatEvent } from '@/lib/chats/events';
+import { encrypt, decrypt } from '@/lib/crypto';
 
 // Streaming de LLM pode passar do timeout default de function na Vercel
 export const maxDuration = 60;
@@ -52,16 +53,19 @@ export async function POST(request: NextRequest) {
         data: {
           conversationId: conversation.id,
           role: 'user',
-          content: message,
+          content: encrypt(message) as string,
           attachmentUrl: attachmentUrl || null,
         },
       });
 
-      // Notificar técnico pelo canal de eventos da conversa
+      // Notificar técnico pelo canal de eventos da conversa (descriptografado para visualização em tempo real)
       emitChatEvent(conversation.id, {
         type: 'message',
         conversationId: conversation.id,
-        payload: userMsg,
+        payload: {
+          ...userMsg,
+          content: decrypt(userMsg.content) as string,
+        },
       });
 
       const readableStream = new ReadableStream({
@@ -95,25 +99,28 @@ export async function POST(request: NextRequest) {
       data: {
         conversationId: conversation.id,
         role: 'user',
-        content: message,
+        content: encrypt(message) as string,
         attachmentUrl: attachmentUrl || null,
       },
     });
 
-    // Notificar técnico e qualquer escuta em tempo real do início do chat
+    // Notificar técnico e qualquer escuta em tempo real do início do chat (descriptografado)
     emitChatEvent(conversation.id, {
       type: 'message',
       conversationId: conversation.id,
-      payload: userMsg,
+      payload: {
+        ...userMsg,
+        content: decrypt(userMsg.content) as string,
+      },
     });
 
     // Build chat history — as mensagens vêm em `desc` (10 mais recentes);
-    // reverter para ordem cronológica antes de montar o histórico
+    // reverter para ordem cronológica antes de montar o histórico (descriptografado para RAG)
     const chatHistory = [...conversation.messages]
       .reverse()
       .map(m => ({
         role: m.role as 'user' | 'assistant',
-        content: m.content,
+        content: decrypt(m.content) as string,
       }));
 
     // Get AI response with RAG
@@ -147,7 +154,7 @@ export async function POST(request: NextRequest) {
             data: {
               conversationId: conversation.id,
               role: 'assistant',
-              content: fullResponse,
+              content: encrypt(fullResponse) as string,
               sources: JSON.stringify(sources.map(s => ({
                 documentName: s.documentName,
                 score: s.score,
@@ -155,11 +162,14 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          // Notificar em tempo real
+          // Notificar em tempo real (descriptografado)
           emitChatEvent(conversation.id, {
             type: 'message',
             conversationId: conversation.id,
-            payload: savedMessage,
+            payload: {
+              ...savedMessage,
+              content: decrypt(savedMessage.content) as string,
+            },
           });
 
           // Record unanswered questions (best-effort)

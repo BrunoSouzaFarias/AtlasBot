@@ -2,20 +2,21 @@
 
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Bot, Lock, Loader2 } from 'lucide-react';
+import { Bot, Mail, Lock, Loader2 } from 'lucide-react';
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get('from') || '/dashboard';
 
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password || loading) return;
+    if (!email || !password || loading) return;
     setLoading(true);
     setError(null);
 
@@ -23,7 +24,7 @@ function LoginContent() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (res.ok) {
@@ -37,7 +38,7 @@ function LoginContent() {
       if (res.status === 429) {
         setError('Muitas tentativas. Aguarde um minuto e tente novamente.');
       } else {
-        setError('Senha incorreta.');
+        setError('E-mail ou senha incorretos.');
       }
     } catch {
       setError('Erro de conexão. Tente novamente.');
@@ -47,54 +48,77 @@ function LoginContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex items-center justify-center px-4 font-sans select-none">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center mb-4 shadow-md shadow-blue-500/10">
             <Bot className="w-8 h-8 text-white" aria-hidden="true" />
           </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-            LibertyBot Admin
+          <h1 className="text-2xl font-bold text-slate-900 leading-tight">
+            AtlasBot
           </h1>
-          <p className="text-sm text-slate-400 mt-1">Acesso restrito à equipe Liberty TI</p>
+          <p className="text-xs text-slate-500 mt-1.5">Painel de Atendimento Técnico - Liberty Health</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4"
+          className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm"
         >
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
-              Senha de administrador
+          <div className="space-y-1">
+            <label htmlFor="email" className="block text-xs font-semibold text-slate-500">
+              E-mail corporativo
+            </label>
+            <div className="relative">
+              <Mail
+                className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
+                aria-hidden="true"
+              />
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoFocus
+                autoComplete="email"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition"
+                placeholder="Ex: seuemail@liberty.com"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="password" className="block text-xs font-semibold text-slate-500">
+              Senha de acesso
             </label>
             <div className="relative">
               <Lock
-                className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2"
+                className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
                 aria-hidden="true"
               />
               <input
                 id="password"
                 type="password"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoFocus
                 autoComplete="current-password"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-sm placeholder:text-slate-600 focus:border-cyan-500 focus-visible:ring-2 focus-visible:ring-cyan-500/40 outline-none transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition"
                 placeholder="••••••••"
               />
             </div>
           </div>
 
           {error && (
-            <p role="alert" className="text-sm text-rose-400">
-              {error}
+            <p role="alert" className="text-xs text-rose-600 font-semibold">
+              ⚠️ {error}
             </p>
           )}
 
           <button
             type="submit"
-            disabled={loading || !password}
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg py-2.5 text-sm transition focus-visible:ring-2 focus-visible:ring-cyan-500/40 outline-none"
+            disabled={loading || !email || !password}
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg py-2.5 text-sm transition shadow-sm cursor-pointer active:scale-[0.98]"
           >
             {loading ? (
               <>

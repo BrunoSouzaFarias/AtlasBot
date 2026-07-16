@@ -7,6 +7,7 @@ import { useChatStream, ChatMessage } from '@/hooks/useChatStream';
 import MessageBubble from '@/components/chat/MessageBubble';
 import ChatInput from '@/components/chat/ChatInput';
 import { useToast } from '@/components/ui/Toast';
+import unitsData from '@/data/units.json';
 
 const DEFAULT_WELCOME = 'Olá! Como posso ajudar você hoje no suporte da Liberty TI?';
 const DEFAULT_COLOR = '#004e92'; // Azul Liberty Health padrão
@@ -29,6 +30,15 @@ function WidgetContent() {
   const [formEmail, setFormEmail] = useState('');
   const [formUnit, setFormUnit] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Estados de Autocomplete e Consentimento LGPD
+  const [lgpdConsent, setLgpdConsent] = useState(false);
+  const [unitSearch, setUnitSearch] = useState('');
+  const [showUnitDropdown, setShowUnitDropdown] = useState(false);
+
+  const filteredUnits = unitsData.filter(unit =>
+    unit.toLowerCase().includes(unitSearch.toLowerCase())
+  ).slice(0, 5);
 
   // Referência do WebRTC e Captura de Tela
   const [isSharingScreen, setIsSharingScreen] = useState(false);
@@ -97,6 +107,16 @@ function WidgetContent() {
     e.preventDefault();
     if (!formName || !formCpf || !formEmail || !formUnit) {
       toast('error', 'Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    if (!lgpdConsent) {
+      toast('error', 'Você precisa aceitar os termos de consentimento da LGPD.');
+      return;
+    }
+
+    if (!unitsData.includes(formUnit)) {
+      toast('error', 'Selecione uma unidade de saúde válida na lista.');
       return;
     }
 
@@ -200,10 +220,21 @@ function WidgetContent() {
       setIsSharingScreen(true);
       setShowShareRequest(false);
 
-      // Configurar conexão P2P do WebRTC
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-      });
+      // Obter servidores ICE dinâmicos (TURN/STUN)
+      let iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+      try {
+        const iceRes = await fetch('/api/chat/webrtc/token');
+        if (iceRes.ok) {
+          const iceData = await iceRes.json();
+          if (iceData.iceServers) {
+            iceServers = iceData.iceServers;
+          }
+        }
+      } catch (err) {
+        console.warn('Erro ao obter servidores TURN, usando STUN padrão:', err);
+      }
+
+      const pc = new RTCPeerConnection({ iceServers });
       peerConnectionRef.current = pc;
 
       // Adicionar trilha de vídeo
@@ -414,17 +445,57 @@ function WidgetContent() {
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 relative">
               <label className="text-xs font-semibold text-slate-500">Unidade de Trabalho *</label>
               <input
                 type="text"
                 required
-                placeholder="Ex: Matriz Brasília / Filial SP"
-                value={formUnit}
-                onChange={(e) => setFormUnit(e.target.value)}
+                placeholder="Digite e selecione sua unidade..."
+                value={unitSearch}
+                onChange={(e) => {
+                  setUnitSearch(e.target.value);
+                  setShowUnitDropdown(true);
+                }}
+                onFocus={() => setShowUnitDropdown(true)}
+                onBlur={() => setTimeout(() => setShowUnitDropdown(false), 200)}
                 className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white"
                 style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
               />
+              {showUnitDropdown && unitSearch.trim().length > 0 && (
+                <div className="absolute left-0 right-0 top-[62px] bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                  {filteredUnits.length === 0 ? (
+                    <div className="p-2.5 text-xs text-slate-400 text-center">Nenhuma unidade encontrada</div>
+                  ) : (
+                    filteredUnits.map((unit) => (
+                      <button
+                        key={unit}
+                        type="button"
+                        onClick={() => {
+                          setFormUnit(unit);
+                          setUnitSearch(unit);
+                          setShowUnitDropdown(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 text-slate-700 transition-all font-medium border-b border-slate-100 last:border-b-0 cursor-pointer"
+                      >
+                        {unit}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-start gap-2.5 pt-1 select-none">
+              <input
+                id="lgpd-consent"
+                type="checkbox"
+                checked={lgpdConsent}
+                onChange={(e) => setLgpdConsent(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              />
+              <label htmlFor="lgpd-consent" className="text-[10px] text-slate-500 leading-normal cursor-pointer">
+                Aceito o tratamento dos meus dados pessoais em conformidade com a **LGPD** para fins de suporte técnico da Liberty Health.
+              </label>
             </div>
 
             <button

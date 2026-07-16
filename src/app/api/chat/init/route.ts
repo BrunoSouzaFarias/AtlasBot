@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { z } from 'zod';
+import { encrypt } from '@/lib/crypto';
 
 const initRequestSchema = z.object({
   userName: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -23,15 +24,16 @@ export async function POST(request: NextRequest) {
     }
 
     const { userName, userCpf, userEmail, userUnit, sessionId } = parsed.data;
+    const cleanCpf = userCpf.replace(/\D/g, ''); // Salva apenas os números do CPF
 
-    // Criar a conversa com os metadados e o status inicial BOT
+    // Criar a conversa com os metadados criptografados e o status inicial BOT
     const conversation = await prisma.conversation.create({
       data: {
         sessionId,
         status: 'BOT',
-        userName,
-        userCpf: userCpf.replace(/\D/g, ''), // Salva apenas os números do CPF
-        userEmail,
+        userName: encrypt(userName),
+        userCpf: encrypt(cleanCpf),
+        userEmail: encrypt(userEmail),
         userUnit,
       },
     });

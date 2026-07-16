@@ -28,6 +28,7 @@ interface ConversationItem {
   userCpf: string | null;
   userEmail: string | null;
   userUnit: string | null;
+  statusChangedAt: string;
   updatedAt: string;
 }
 
@@ -36,6 +37,47 @@ interface MessageItem {
   role: 'user' | 'assistant' | 'agent' | 'system';
   content: string;
   createdAt?: string;
+}
+
+function WaitingTime({ statusChangedAt }: { statusChangedAt: string }) {
+  const [elapsed, setElapsed] = useState('00:00');
+  const [isOverSLA, setIsOverSLA] = useState(false);
+
+  useEffect(() => {
+    const updateTime = () => {
+      const start = new Date(statusChangedAt).getTime();
+      const now = Date.now();
+      const diffMs = now - start;
+
+      if (isNaN(start)) {
+        setElapsed('00:00');
+        return;
+      }
+
+      const diffSecs = Math.max(0, Math.floor(diffMs / 1000));
+      const mins = Math.floor(diffSecs / 60);
+      const secs = diffSecs % 60;
+
+      setIsOverSLA(mins >= 5);
+      setElapsed(`${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`);
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [statusChangedAt]);
+
+  return (
+    <span
+      className={`text-[9px] font-bold px-1.5 py-0.5 rounded border select-none ${
+        isOverSLA
+          ? 'bg-rose-50 border-rose-200 text-rose-600 animate-pulse'
+          : 'bg-slate-100 border-slate-200 text-slate-500'
+      }`}
+    >
+      Fila: {elapsed}
+    </span>
+  );
 }
 
 export default function DashboardChats() {
@@ -79,6 +121,22 @@ export default function DashboardChats() {
     }, 6000);
     return () => clearInterval(interval);
   }, [fetchConversations]);
+
+  // Alerta sonoro quando um novo chamado entra no estado WAITING
+  const prevWaitingIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const currentWaiting = conversations.filter(c => c.status === 'WAITING');
+    const hasNewWaiting = currentWaiting.some(c => !prevWaitingIdsRef.current.has(c.id));
+    
+    if (hasNewWaiting && conversations.length > 0) {
+      // Toca sinal sonoro (sino suave)
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-200.wav');
+      audio.volume = 0.4;
+      audio.play().catch(err => console.warn('Autoplay bloqueado pelo navegador:', err));
+    }
+    
+    prevWaitingIdsRef.current = new Set(currentWaiting.map(c => c.id));
+  }, [conversations]);
 
   // Carregar histórico de mensagens ao selecionar um chat
   const handleSelectChat = async (chat: ConversationItem) => {
@@ -169,9 +227,21 @@ export default function DashboardChats() {
 
           if (signal.type === 'offer' && selectedChat) {
             setIsScreenShareActive(true);
-            const pc = new RTCPeerConnection({
-              iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-            });
+            // Obter servidores ICE dinâmicos (TURN/STUN)
+            let iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+            try {
+              const iceRes = await fetch('/api/chat/webrtc/token');
+              if (iceRes.ok) {
+                const iceData = await iceRes.json();
+                if (iceData.iceServers) {
+                  iceServers = iceData.iceServers;
+                }
+              }
+            } catch (err) {
+              console.warn('Erro ao obter servidores TURN no dashboard:', err);
+            }
+
+            const pc = new RTCPeerConnection({ iceServers });
             peerConnectionRef.current = pc;
 
             pc.ontrack = (trackEvent) => {
@@ -321,6 +391,45 @@ export default function DashboardChats() {
     }
   };
 
+  // Excluir dados pessoais do solicitante (LGPD - Direito ao Esquecimento)
+  const handleLgpdForget = async () => {
+    if (!selectedChat) return;
+    if (
+      !confirm(
+        'Deseja realmente remover permanentemente todos os dados pessoais e o histórico deste chamado em conformidade com a LGPD? Esta ação não pode ser desfeita.'
+      )
+    )
+      return;
+
+    try {
+      const res = await fetch('/api/chat/lgpd/forget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: selectedChat.id }),
+      });
+
+      if (res.ok) {
+        toast('success', 'Dados do cliente removidos sob as regras da LGPD.');
+        setSelectedChat(prev =>
+          prev
+            ? {
+                ...prev,
+                userName: '[ANONIMIZADO]',
+                userCpf: '[ANONIMIZADO]',
+                userEmail: '[ANONIMIZADO]',
+              }
+            : null
+        );
+        setMessages([]); // limpa mensagens localmente
+        fetchConversations(true);
+      } else {
+        toast('error', 'Falha ao remover dados pessoais.');
+      }
+    } catch {
+      toast('error', 'Erro ao se conectar ao servidor.');
+    }
+  };
+
   return (
     <AppShell title="Atendimento Humano" description="Gerenciamento de chamados N2 e suporte remoto">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-220px)] min-h-[500px]">
@@ -345,6 +454,10 @@ export default function DashboardChats() {
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {conversations.map((chat) => {
                 const isSelected = selectedChat?.id === chat.id;
+                // Destaca chamado se estiver WAITING por mais de 5 minutos (SLA N1)
+                const waitStart = new Date(chat.statusChangedAt).getTime();
+                const isOverSLA = chat.status === 'WAITING' && !isNaN(waitStart) && (Date.now() - waitStart) >= 5 * 60 * 1000;
+
                 return (
                   <button
                     key={chat.id}
@@ -352,6 +465,8 @@ export default function DashboardChats() {
                     className={`w-full text-left p-3 rounded-lg border transition-all flex flex-col gap-1.5 cursor-pointer outline-none ${
                       isSelected
                         ? 'bg-blue-50 border-blue-200 text-blue-900 shadow-sm'
+                        : isOverSLA
+                        ? 'bg-rose-50/80 border-rose-300 text-rose-900 animate-pulse'
                         : 'bg-slate-50/60 border-slate-200 text-slate-700 hover:bg-slate-50'
                     }`}
                   >
@@ -377,13 +492,17 @@ export default function DashboardChats() {
 
                     <div className="flex items-center justify-between text-[9px] text-slate-400 select-none mt-1">
                       <span className="font-mono">ID: {chat.id.substring(0, 8)}...</span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-2.5 h-2.5" />
-                        {new Date(chat.updatedAt).toLocaleTimeString('pt-BR', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
+                      {chat.status === 'WAITING' ? (
+                        <WaitingTime statusChangedAt={chat.statusChangedAt} />
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5" />
+                          {new Date(chat.updatedAt).toLocaleTimeString('pt-BR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      )}
                     </div>
                   </button>
                 );
@@ -446,6 +565,13 @@ export default function DashboardChats() {
                           Solicitar Tela
                         </button>
                       )}
+                      <button
+                        onClick={handleLgpdForget}
+                        className="text-xs px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg border border-rose-200 flex items-center justify-center gap-1 select-none cursor-pointer transition-all"
+                        title="Apagar dados pessoais deste solicitante de forma definitiva sob as regras da LGPD"
+                      >
+                        Limpar Dados (LGPD)
+                      </button>
                       <button
                         onClick={() => handleUpdateStatus('CLOSED')}
                         className="text-xs px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-600 font-bold rounded-lg border border-slate-200 flex items-center justify-center gap-1 select-none cursor-pointer"

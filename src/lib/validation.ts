@@ -16,6 +16,7 @@ export const feedbackSchema = z.object({
 
 // --- Login ---
 export const loginSchema = z.object({
+  email: z.string().trim().email('E-mail inválido'),
   password: z.string().min(1, 'Senha é obrigatória').max(256),
 });
 
