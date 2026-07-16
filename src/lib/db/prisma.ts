@@ -18,7 +18,7 @@ if (
   // Conexão remota do Turso utilizando o Driver Adapter LibSQL para ambientes serverless
   const client = createClient({
     url: databaseUrl,
-    authToken: process.env.TURSO_AUTH_TOKEN || undefined,
+    ...(process.env.TURSO_AUTH_TOKEN ? { authToken: process.env.TURSO_AUTH_TOKEN } : {}),
   });
   const adapter = new PrismaLibSQL(client);
   prismaInstance = new PrismaClient({ adapter });
