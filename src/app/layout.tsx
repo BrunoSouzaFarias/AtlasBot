@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LibertyBot — Suporte N1 Inteligente",
+  title: "AtlasBot — Suporte N1 Inteligente",
   description: "Assistente de Inteligência Generativa para Operações N1 e Suporte Técnico da Liberty TI",
 };
 

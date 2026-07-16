@@ -57,7 +57,7 @@ export default function Home() {
       <main className="max-w-6xl mx-auto px-6 py-12 md:py-20 flex-1 flex flex-col items-center text-center justify-center relative z-10">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-100 rounded-full text-xs font-semibold text-blue-600 mb-6 animate-pulse select-none">
           <Bot className="w-3.5 h-3.5" />
-          LibertyBot v1.0 MVP
+          AtlasBot v1.0 MVP
         </span>
         
         <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight max-w-3xl">
